@@ -54,13 +54,16 @@ def make_plot(x, y, dy):
     #    pwrite(gplot,"e\n")
     #    gflush()
 
-def equil_curve(fname, block=None, weights=None):
+def equil_curve(fname, block=None, weights=None, imag=False):
 
     #1. get data
     beta,Ereal,Eimag = np.loadtxt(fname,unpack=True)
     
-    E = np.abs(Ereal + 1j*Eimag)
-    #E = Ereal
+    #E = np.abs(Ereal + 1j*Eimag)
+    if imag:
+        E = Eimag
+    else:
+        E = Ereal
     dE = np.zeros(E.shape) # TODO: this is temporary, need to get dE for each block
 
     #2. (opt) reblock data
@@ -92,6 +95,8 @@ def get_args():
     parser.add_argument('--verbose', '-v', action='count',
                         help='set verbosity level, use more \'v\' chars to make output more verbose (i.e. -vv ) max. level is 3')
 
+    parser.add_argument('--imag','-i', action='store_true',
+                        help='plot imaginary part only (by default, the real part is plotted)')
 
     args = parser.parse_args()
     return args
@@ -103,7 +108,7 @@ def main():
     block = args.block_size#[0]
     fname = args.name
     verbose = args.verbose
-
+    imag = args.imag
 
     #TODO: use logger for these
     #print("Options are: ")
@@ -124,7 +129,9 @@ def main():
         print(f"  [{bcolors.OKGREEN}+{bcolors.ENDC}] using verbosity level {bcolors.OKGREEN}{verbose}{bcolors.ENDC} ")
 
     # run analysis
-    equil_curve(fname,block)
+    equil_curve(fname,
+                block=block,
+                imag=imag)
 
 if __name__ == '__main__':
     main()
