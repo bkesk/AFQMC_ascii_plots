@@ -39,7 +39,7 @@ def make_plot(x, y, dy):
 
     
     pwrite(gplot,"set term dumb 80 20\n")
-    pwrite(gplot,"plot '-' using 1:2 title 'E(Beta)' with linespoints \n")
+    pwrite(gplot,"plot '-' using 1:2 title 'E(beta)' with linespoints \n")
     for a,b in zip(x,y):
         pwrite(gplot,f"{a} {b}\n")
     pwrite(gplot,"e\n")
@@ -54,15 +54,22 @@ def make_plot(x, y, dy):
     #    pwrite(gplot,"e\n")
     #    gflush()
 
-def equil_curve(fname, block=None, weights=None, imag=False):
+def equil_curve(fname, block=None, ignore=0, weights=None, imag=False):
 
     #1. get data
     beta,Ereal,Eimag = np.loadtxt(fname,unpack=True)
     
+    if ignore > 0:
+        beta = beta[ignore:]
+        Ereal = Ereal[ignore:]
+        Eimag = Eimag[ignore:]
+
     #E = np.abs(Ereal + 1j*Eimag)
     if imag:
+        print(f"\n\n{bcolors.OKCYAN}======== Plotting Imag(E) vs. Beta ========{bcolors.ENDC}")
         E = Eimag
     else:
+        print(f"\n\n{bcolors.OKBLUE}======== Plotting Real(E) vs. Beta ========{bcolors.ENDC}")
         E = Ereal
     dE = np.zeros(E.shape) # TODO: this is temporary, need to get dE for each block
 
@@ -71,6 +78,8 @@ def equil_curve(fname, block=None, weights=None, imag=False):
         print(f"  [{bcolors.OKGREEN}+{bcolors.ENDC}] reblocking with block size {bcolors.OKGREEN}{block}{bcolors.ENDC} ")        
         if weights is None:
             weights,_ = np.loadtxt("den.dat",unpack=True)
+        if ignore > 0:
+            weights = weights[ignore:]
         beta,E,dE,W=reblock(beta,E,dE,weights,block)
 
     #3. plot data
@@ -88,6 +97,10 @@ def get_args():
     parser.add_argument('--block_size','-b', metavar='block', type=int,
                         action='store',
                         help='block size for reblocking')
+    parser.add_argument('--ignore','-I', metavar='num_ignore', type=int,
+                        action='store',default=0,
+                        help='number of entries to ignore (from beginning of data)')
+
     parser.add_argument('--name','-n', metavar='name', type=str,
                         action='store',
                         default='energyVersusBeta.dat',
@@ -95,7 +108,7 @@ def get_args():
     parser.add_argument('--verbose', '-v', action='count',
                         help='set verbosity level, use more \'v\' chars to make output more verbose (i.e. -vv ) max. level is 3')
 
-    parser.add_argument('--imag','-i', action='store_true',
+    parser.add_argument('--imag','-i',action='store_true',
                         help='plot imaginary part only (by default, the real part is plotted)')
 
     args = parser.parse_args()
@@ -109,6 +122,7 @@ def main():
     fname = args.name
     verbose = args.verbose
     imag = args.imag
+    ignore = args.ignore
 
     #TODO: use logger for these
     #print("Options are: ")
@@ -131,6 +145,7 @@ def main():
     # run analysis
     equil_curve(fname,
                 block=block,
+                ignore=ignore,
                 imag=imag)
 
 if __name__ == '__main__':
