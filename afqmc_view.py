@@ -3,9 +3,8 @@ import numpy as np
 import argparse
 import logging
 
-import subprocess
+import subprocess # careful! no user input
 
-from regressions import reblock
 
 class bcolors:
     HEADER = '\033[95m'
@@ -45,14 +44,40 @@ def make_plot(x, y, dy):
     pwrite(gplot,"e\n")
     gflush()
     
-    # plot errorbars separately
-    #if dy is not None:
-    #    pwrite(gplot,"set term dumb 80 20\n")
-    #    pwrite(gplot,"plot '-' using 1:3 title 'dE (Beta)' with yerrorlines \n")
-    #    for a,b,c in zip(x,y,dy):
-    #        pwrite(gplot,f"{a} {b} {c}\n")
-    #    pwrite(gplot,"e\n")
-    #    gflush()
+
+def avg_block(beta, E, err, W):
+    assert W.shape == E.shape
+    assert beta.shape == E.shape
+    assert err.shape == E.shape
+    
+    Wblk = np.sum(W)
+    Eblk = np.dot(E,W)/Wblk
+
+    # the error is simply the rms error, acounting for the walker weights
+    errblk = np.sqrt(np.average(err**2, weights=W))
+    betablk = np.mean(beta)
+    
+    return betablk, Eblk, errblk, Wblk
+    
+def reblock(beta, E, err, W, blk_size):
+    assert W.shape == E.shape
+    assert beta.shape == E.shape
+    assert err.shape == E.shape
+        
+    N = E.shape[0] // blk_size
+
+    Beta_rb = np.zeros((N))
+    Erb = np.zeros((N))
+    err_rb = np.zeros((N))
+    Wrb = np.zeros((N))
+    
+    for n in range(N):
+        Beta_rb[n], Erb[n], err_rb[n], Wrb[n] = avg_block(beta[n*blk_size:(n+1)*blk_size],
+                                     E[n*blk_size:(n+1)*blk_size],
+                                     err[n*blk_size:(n+1)*blk_size],
+                                     W[n*blk_size:(n+1)*blk_size])
+
+    return Beta_rb, Erb, err_rb, Wrb
 
 def equil_curve(fname, block=None, weights=None, imag=False):
 
@@ -105,30 +130,14 @@ def main():
     # get options
     args = get_args()
 
-    block = args.block_size#[0]
+    block = args.block_size
     fname = args.name
     verbose = args.verbose
     imag = args.imag
 
-    #TODO: use logger for these
-    #print("Options are: ")
-    #print(" block_size ", block)
-    #print(" name ", fname)
-    #print(" verbose ", verbose)
-
-    ##############
-    #
-    #  debug: example
-    #
-    ##############
-    #print("Contents of args's 'dir'")
-    #for r in dir(args):
-    #    print(f"{r}")
-    
     if verbose:
         print(f"  [{bcolors.OKGREEN}+{bcolors.ENDC}] using verbosity level {bcolors.OKGREEN}{verbose}{bcolors.ENDC} ")
 
-    # run analysis
     equil_curve(fname,
                 block=block,
                 imag=imag)
