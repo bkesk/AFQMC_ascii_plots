@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
+
+import logging # https://stackoverflow.com/questions/20240464/python-logging-file-is-not-working-when-using-logging-basicconfig/63868063
+
 import numpy as np
 import argparse
-import logging
-
 import subprocess
 
 from regressions import reblock
@@ -18,8 +19,43 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+##############################################################
+#                                                            #
+#  Example: Q: what if we want to change our input settings? #
+#                                                            #
+##############################################################
+
+def log_init(verbose):
+    # see https://stackoverflow.com/questions/20240464/python-logging-file-is-not-working-when-using-logging-basicconfig/63868063
+    level = { 0 : logging.ERROR, 
+              1 : logging.WARNING,
+              2 : logging.INFO,
+              3 : logging.DEBUG}
+
+    print(level[verbose])
+    # version 1. (my preference) save to a file
+    logging.basicConfig(filename='example.log',
+                        filemode='w', 
+                        level=level[verbose])
+
+    # version 2. send to stdout
+    #logging.basicConfig(level=level[verbose])
+
+    # note: more recent versions of python may need the 'encoding'
+    #           argument to be set (to 'utf-8' probably)
+
+
 def pwrite(g, data):
     g.stdin.write(data.encode('utf-8'))
+
+    ################
+    #
+    # EX: the dir() function
+    #
+    ##############
+    logging.debug("what does the argument 'g' contain?")
+    for d in dir(g):
+        logging.debug(str(d))
 
 def make_plot(x, y, dy):
     '''
@@ -93,6 +129,8 @@ def get_args():
     args - an object containing the parsed arguments - see argparse documentation
     '''
     
+    # EX: quickly add a new option
+
     parser = argparse.ArgumentParser(description='Plot AFQMC E(beta) curve')
     parser.add_argument('--block_size','-b', metavar='block', type=int,
                         action='store',
@@ -105,7 +143,10 @@ def get_args():
                         action='store',
                         default='energyVersusBeta.dat',
                         help='name of file containing AFQMC data')
+
+    #ex: logging.error(f"{bcolors.WARNING}KE: intentional error, as an example!{bcolors.ENDC}") # set default to 0
     parser.add_argument('--verbose', '-v', action='count',
+                        default=0,
                         help='set verbosity level, use more \'v\' chars to make output more verbose (i.e. -vv ) max. level is 3')
 
     parser.add_argument('--imag','-i',action='store_true',
@@ -115,32 +156,40 @@ def get_args():
     return args
 
 def main():
-    # get options
+    # EX: the dir() function
+    #print(dir(logging))
+
+    # EX: careful not to call the logging before setting it up! (otherwise, it uses defaults!)
     args = get_args()
 
-    block = args.block_size#[0]
+    block = args.block_size
     fname = args.name
     verbose = args.verbose
     imag = args.imag
     ignore = args.ignore
+    
+    # EX: logging module - good for debugging
+    log_init(verbose)
 
-    #TODO: use logger for these
-    #print("Options are: ")
-    #print(" block_size ", block)
-    #print(" name ", fname)
-    #print(" verbose ", verbose)
+    logging.info("Options are: ")
+    logging.info(f" block_size={block} ")
+    logging.info(f" file name={fname} ")
+    logging.info(f" verbose={verbose} ")
+    logging.info(f" plot imaginary part? {imag}")
+    logging.info(f" num. entries to ignore (starting with lowest index): {ignore}")
 
     ##############
     #
-    #  debug: example
+    #  Ex: inspecting the "contents" of any python object
     #
     ##############
+
     #print("Contents of args's 'dir'")
     #for r in dir(args):
     #    print(f"{r}")
     
-    if verbose:
-        print(f"  [{bcolors.OKGREEN}+{bcolors.ENDC}] using verbosity level {bcolors.OKGREEN}{verbose}{bcolors.ENDC} ")
+    
+    print(f"  [{bcolors.OKGREEN}+{bcolors.ENDC}] using verbosity level {bcolors.OKGREEN}{verbose}{bcolors.ENDC} ")
 
     # run analysis
     equil_curve(fname,
