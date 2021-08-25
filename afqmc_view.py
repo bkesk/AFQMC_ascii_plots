@@ -1,12 +1,8 @@
 #!/usr/bin/env python3
-
-import logging # https://stackoverflow.com/questions/20240464/python-logging-file-is-not-working-when-using-logging-basicconfig/63868063
-
 import numpy as np
 import argparse
-import subprocess
 
-from regressions import reblock
+import subprocess # careful! no user input
 
 class bcolors:
     HEADER = '\033[95m'
@@ -19,43 +15,8 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-##############################################################
-#                                                            #
-#  Example: Q: what if we want to change our input settings? #
-#                                                            #
-##############################################################
-
-def log_init(verbose):
-    # see https://stackoverflow.com/questions/20240464/python-logging-file-is-not-working-when-using-logging-basicconfig/63868063
-    level = { 0 : logging.ERROR, 
-              1 : logging.WARNING,
-              2 : logging.INFO,
-              3 : logging.DEBUG}
-
-    print(level[verbose])
-    # version 1. (my preference) save to a file
-    logging.basicConfig(filename='example.log',
-                        filemode='w', 
-                        level=level[verbose])
-
-    # version 2. send to stdout
-    #logging.basicConfig(level=level[verbose])
-
-    # note: more recent versions of python may need the 'encoding'
-    #           argument to be set (to 'utf-8' probably)
-
-
 def pwrite(g, data):
     g.stdin.write(data.encode('utf-8'))
-
-    ################
-    #
-    # EX: the dir() function
-    #
-    ##############
-    logging.debug("what does the argument 'g' contain?")
-    for d in dir(g):
-        logging.debug(str(d))
 
 def make_plot(x, y, dy):
     '''
@@ -81,14 +42,40 @@ def make_plot(x, y, dy):
     pwrite(gplot,"e\n")
     gflush()
     
-    # plot errorbars separately
-    #if dy is not None:
-    #    pwrite(gplot,"set term dumb 80 20\n")
-    #    pwrite(gplot,"plot '-' using 1:3 title 'dE (Beta)' with yerrorlines \n")
-    #    for a,b,c in zip(x,y,dy):
-    #        pwrite(gplot,f"{a} {b} {c}\n")
-    #    pwrite(gplot,"e\n")
-    #    gflush()
+
+def avg_block(beta, E, err, W):
+    assert W.shape == E.shape
+    assert beta.shape == E.shape
+    assert err.shape == E.shape
+    
+    Wblk = np.sum(W)
+    Eblk = np.dot(E,W)/Wblk
+
+    # the error is simply the rms error, acounting for the walker weights
+    errblk = np.sqrt(np.average(err**2, weights=W))
+    betablk = np.mean(beta)
+    
+    return betablk, Eblk, errblk, Wblk
+    
+def reblock(beta, E, err, W, blk_size):
+    assert W.shape == E.shape
+    assert beta.shape == E.shape
+    assert err.shape == E.shape
+        
+    N = E.shape[0] // blk_size
+
+    Beta_rb = np.zeros((N))
+    Erb = np.zeros((N))
+    err_rb = np.zeros((N))
+    Wrb = np.zeros((N))
+    
+    for n in range(N):
+        Beta_rb[n], Erb[n], err_rb[n], Wrb[n] = avg_block(beta[n*blk_size:(n+1)*blk_size],
+                                     E[n*blk_size:(n+1)*blk_size],
+                                     err[n*blk_size:(n+1)*blk_size],
+                                     W[n*blk_size:(n+1)*blk_size])
+
+    return Beta_rb, Erb, err_rb, Wrb
 
 def equil_curve(fname, block=None, ignore=0, weights=None, imag=False):
 
@@ -100,7 +87,6 @@ def equil_curve(fname, block=None, ignore=0, weights=None, imag=False):
         Ereal = Ereal[ignore:]
         Eimag = Eimag[ignore:]
 
-    #E = np.abs(Ereal + 1j*Eimag)
     if imag:
         print(f"\n\n{bcolors.OKCYAN}======== Plotting Imag(E) vs. Beta ========{bcolors.ENDC}")
         E = Eimag
@@ -129,8 +115,6 @@ def get_args():
     args - an object containing the parsed arguments - see argparse documentation
     '''
     
-    # EX: quickly add a new option
-
     parser = argparse.ArgumentParser(description='Plot AFQMC E(beta) curve')
     parser.add_argument('--block_size','-b', metavar='block', type=int,
                         action='store',
@@ -144,7 +128,6 @@ def get_args():
                         default='energyVersusBeta.dat',
                         help='name of file containing AFQMC data')
 
-    #ex: logging.error(f"{bcolors.WARNING}KE: intentional error, as an example!{bcolors.ENDC}") # set default to 0
     parser.add_argument('--verbose', '-v', action='count',
                         default=0,
                         help='set verbosity level, use more \'v\' chars to make output more verbose (i.e. -vv ) max. level is 3')
@@ -156,10 +139,6 @@ def get_args():
     return args
 
 def main():
-    # EX: the dir() function
-    #print(dir(logging))
-
-    # EX: careful not to call the logging before setting it up! (otherwise, it uses defaults!)
     args = get_args()
 
     block = args.block_size
@@ -168,30 +147,8 @@ def main():
     imag = args.imag
     ignore = args.ignore
     
-    # EX: logging module - good for debugging
-    log_init(verbose)
-
-    logging.info("Options are: ")
-    logging.info(f" block_size={block} ")
-    logging.info(f" file name={fname} ")
-    logging.info(f" verbose={verbose} ")
-    logging.info(f" plot imaginary part? {imag}")
-    logging.info(f" num. entries to ignore (starting with lowest index): {ignore}")
-
-    ##############
-    #
-    #  Ex: inspecting the "contents" of any python object
-    #
-    ##############
-
-    #print("Contents of args's 'dir'")
-    #for r in dir(args):
-    #    print(f"{r}")
-    
-    
     print(f"  [{bcolors.OKGREEN}+{bcolors.ENDC}] using verbosity level {bcolors.OKGREEN}{verbose}{bcolors.ENDC} ")
 
-    # run analysis
     equil_curve(fname,
                 block=block,
                 ignore=ignore,
