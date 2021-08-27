@@ -7,7 +7,7 @@ a wider variety of plots/formats can be easily added by request.
 This is also a good example of the 'argparse' python module which alows command line arguments to be easily parsed within python. 
 It also automatically generates a 'help' option.
 
-<img src="imgs/Screen-afqmc_view-help.png"
+<img src="imgs/afqmc_view-help2.jpg"
      style="float: left; margin-right: 10px;" />
 
 ## Suggested Installation
@@ -51,7 +51,7 @@ afqmc_view
 
 from within the directory containing the results.
 
-<img src="imgs/Screen-afqmc_view-plot1.png"
+<img src="imgs/afqmc_view-plot1.jpg"
      style="float: left; margin-right: 10px;" />
 
 
