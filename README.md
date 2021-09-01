@@ -1,8 +1,9 @@
 # AFQMC_ascii_plots
-Simple ASCII plots for AFQMC based on gnuplot in 'dumb' terminal mode.
+
+This repo is an example provided in relation to our list of [research tools](https://github.com/bbusemeyer/research_tools).
+Here, we make simple ASCII plots for AFQMC based on gnuplot in 'dumb' terminal mode.
 Currently, only energy versus total projection time curves for output in afqmclab's format are implemented; however,
 a wider variety of plots/formats can be easily added by request.
-
 
 This is also a good example of the 'argparse' python module which alows command line arguments to be easily parsed within python. 
 It also automatically generates a 'help' option.
